@@ -1,233 +1,237 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Photo & Video Enhancer</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .slider-container {
-      position: relative;
-      overflow: hidden;
-      user-select: none;
-    }
-    .img-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 50%;
-      overflow: hidden;
-    }
-    .slider-handle {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 50%;
-      width: 4px;
-      background: #3b82f6;
-      cursor: ew-resize;
-      transform: translateX(-50%);
-    }
-    .slider-button {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 36px;
-      height: 36px;
-      background: #3b82f6;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Upscaler - Real-ESRGAN</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-4">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-  <header class="w-full max-w-4xl py-6 text-center border-b border-slate-800 mb-8">
-    <h1 class="text-3xl font-bold text-blue-500 mb-2">✨ Vinexty AI Enhancer</h1>
-    <p class="text-slate-400 text-sm">Tingkatkan Kualitas Foto secara Gratis berbasis AI</p>
-  </header>
-
-  <main class="w-full max-w-4xl space-y-6">
-    
-    <!-- Config Input API -->
-    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Backend API URL (dari Ngrok / Colab):</label>
-      <input type="url" id="apiUrl" placeholder="https://xxxx.ngrok-free.app" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
-    </div>
-
-    <!-- Upload Box -->
-    <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-2xl p-8 text-center bg-slate-800/50 cursor-pointer transition">
-      <input type="file" id="fileInput" accept="image/*" class="hidden">
-      <div class="space-y-3">
-        <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-full flex items-center justify-center mx-auto text-2xl">📸</div>
-        <div>
-          <p class="font-medium">Klik atau seret foto kamu ke sini</p>
-          <p class="text-xs text-slate-500 mt-1">Mendukung format JPG, PNG, WEBP</p>
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur py-4 px-6 mb-8">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+                Real-ESRGAN AI Upscaler
+            </h1>
+            <span class="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700">
+                GPU Backend Connected
+            </span>
         </div>
-      </div>
-    </div>
+    </header>
 
-    <!-- Status Indicator -->
-    <div id="statusBox" class="hidden bg-blue-900/30 border border-blue-500/30 p-4 rounded-xl text-center">
-      <p id="statusText" class="text-sm font-medium text-blue-300">Memproses media...</p>
-    </div>
-
-    <!-- Comparison View -->
-    <div id="resultContainer" class="hidden space-y-4">
-      <div class="text-center font-medium text-slate-300">Geser slider untuk melihat perbandingan (Sebelum vs Sesudah)</div>
-      <div class="slider-container relative w-full h-[400px] md:h-[500px] bg-black rounded-xl overflow-hidden border border-slate-800">
-        <!-- Processed / Enhanced Image (After) -->
-        <img id="afterImg" class="absolute inset-0 w-full h-full object-contain" src="" alt="Enhanced">
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 flex-1 w-full pb-12">
         
-        <!-- Original Image (Before) -->
-        <div id="imgOverlay" class="img-overlay">
-          <img id="beforeImg" class="absolute inset-0 w-full h-full object-contain" src="" alt="Original">
-        </div>
+        <!-- Configuration Panel -->
+        <section class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 shadow-xl">
+            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">1. Konfigurasi Backend</h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input 
+                    type="url" 
+                    id="apiUrl" 
+                    placeholder="Masukkan URL LocalTunnel (contoh: https://shaky-views-tell.loca.lt/upscale)"
+                    value="https://shaky-views-tell.loca.lt/upscale"
+                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition"
+                >
+            </div>
+            <p class="text-xs text-slate-500 mt-2">
+                * Pastikan URL di atas sesuai dengan output `🚀 PUBLIC API ENDPOINT TERBARU` dari Google Colab.
+            </p>
+        </section>
 
-        <!-- Slider Line & Button -->
-        <div id="sliderHandle" class="slider-handle">
-          <div class="slider-button">↔</div>
-        </div>
-      </div>
-    </div>
+        <!-- Upload & Process Panel -->
+        <section class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 shadow-xl">
+            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">2. Unggah Gambar</h2>
+            
+            <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-8 transition cursor-pointer bg-slate-900/30" id="dropZone">
+                <svg class="w-12 h-12 text-slate-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <p class="text-sm text-slate-300 font-medium mb-1">Klik atau seret gambar ke sini</p>
+                <p class="text-xs text-slate-500">Format yang didukung: PNG, JPG, JPEG, WEBP</p>
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+            </div>
 
-  </main>
+            <!-- Action Button -->
+            <button 
+                id="upscaleBtn" 
+                disabled
+                class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+            >
+                <span id="btnText">Mulai Upscale (4x)</span>
+                <div id="btnSpinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </button>
+        </section>
 
-  <script>
-    // GANTI 2 BARIS DI BAWAH INI DENGAN KUNCI SUPABASE KAMU
-    const SUPABASE_URL = "https://rgycdnvbuwmhjtbiniai.supabase.co";
-const SUPABASE_KEY = "sb_publishable_PkiRF33EU33iO1L4w9SEFQ_t3PMHkEd";
-    
+        <!-- Preview Results Panel -->
+        <section id="resultSection" class="hidden space-y-6">
+            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">3. Hasil Perbandingan</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Original Image -->
+                <div class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 flex flex-col items-center">
+                    <div class="flex justify-between w-full mb-3 text-xs text-slate-400">
+                        <span class="font-semibold text-slate-200">Gambar Asli</span>
+                        <span id="origResolution">-</span>
+                    </div>
+                    <div class="w-full h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+                        <img id="origPreview" class="max-h-full max-w-full object-contain" alt="Original Preview">
+                    </div>
+                </div>
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                <!-- Upscaled Image -->
+                <div class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 flex flex-col items-center">
+                    <div class="flex justify-between w-full mb-3 text-xs text-slate-400">
+                        <span class="font-semibold text-indigo-400">Hasil Upscale (4x)</span>
+                        <span id="upscaledResolution" class="text-indigo-400 font-medium">-</span>
+                    </div>
+                    <div class="w-full h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
+                        <img id="upscaledPreview" class="max-h-full max-w-full object-contain" alt="Upscaled Preview">
+                    </div>
+                    
+                    <!-- Download Link -->
+                    <a 
+                        id="downloadBtn" 
+                        download="upscaled-image.png" 
+                        class="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white text-center text-sm font-medium py-2.5 rounded-xl transition block shadow-lg shadow-emerald-600/20"
+                    >
+                        Unduh Gambar HD
+                    </a>
+                </div>
+            </div>
+        </section>
 
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const statusBox = document.getElementById('statusBox');
-    const statusText = document.getElementById('statusText');
-    const resultContainer = document.getElementById('resultContainer');
-    const beforeImg = document.getElementById('beforeImg');
-    const afterImg = document.getElementById('afterImg');
-    const imgOverlay = document.getElementById('imgOverlay');
-    const sliderHandle = document.getElementById('sliderHandle');
+    </main>
 
-    dropZone.addEventListener('click', () => fileInput.click());
+    <!-- JavaScript Logic -->
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const dropZone = document.getElementById('dropZone');
+        const upscaleBtn = document.getElementById('upscaleBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        
+        const resultSection = document.getElementById('resultSection');
+        const origPreview = document.getElementById('origPreview');
+        const upscaledPreview = document.getElementById('upscaledPreview');
+        const origResolution = document.getElementById('origResolution');
+        const upscaledResolution = document.getElementById('upscaledResolution');
+        const downloadBtn = document.getElementById('downloadBtn');
 
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+        let selectedBase64 = null;
 
-      const apiUrl = document.getElementById('apiUrl').value.trim();
-      if (!apiUrl) {
-        alert("Masukkan URL API Ngrok dari Colab terlebih dahulu!");
-        return;
-      }
+        // 1. Handle File Upload Selection
+        dropZone.addEventListener('click', () => imageInput.click());
 
-      showStatus("Mengunggah berkas ke storage...");
-
-      try {
-        const fileName = `${Date.now()}_${file.name}`;
-        const { data, error } = await supabaseClient.storage.from('MEDIA-STORAGE').upload(fileName, file);
-        if (error) throw error;
-
-        const originalUrl = `${SUPABASE_URL}/storage/v1/object/public/MEDIA-STORAGE/${fileName}`;
-        const { data: job, error: jobErr } = await supabaseClient.from('jobs').insert([{
-          original_url: originalUrl,
-          media_type: 'image',
-          status: 'pending'
-        }]).select().single();
-
-        if (jobErr) throw jobErr;
-
-        showStatus("Mengirim job ke GPU Worker Colab...");
-
-        await fetch(`${apiUrl}/process`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            job_id: job.id,
-            file_path: fileName,
-            media_type: 'image'
-          })
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
         });
 
-        showStatus("AI sedang memproses peningkatan kualitas foto...");
+        // Drag and Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-indigo-500');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
 
-        supabaseClient.channel('custom-filter-channel')
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'jobs',
-            filter: `id=eq.${job.id}`
-          }, (payload) => {
-            if (payload.new.status === 'completed') {
-              showResult(originalUrl, payload.new.processed_url);
-            } else if (payload.new.status === 'failed') {
-              showStatus("❌ Pemrosesan gagal di AI Worker.");
+        // Convert File to Base64 & Display Preview
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                selectedBase64 = e.target.result;
+                origPreview.src = selectedBase64;
+                
+                // Read Resolution
+                const img = new Image();
+                img.onload = () => {
+                    origResolution.textContent = `${img.width} x${img.height} px`;
+                };
+                img.src = selectedBase64;
+
+                upscaleBtn.disabled = false;
+                resultSection.classList.remove('hidden');
+                upscaledPreview.src = '';
+                upscaledResolution.textContent = 'Menunggu proses...';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 2. Kirim Request ke API Backend
+        upscaleBtn.addEventListener('click', async () => {
+            const apiUrl = document.getElementById('apiUrl').value.trim();
+
+            if (!apiUrl) {
+                alert('Harap masukkan URL API Endpoint!');
+                return;
             }
-          })
-          .subscribe();
 
-      } catch (err) {
-        alert("Error: " + err.message);
-        hideStatus();
-      }
-    });
+            if (!selectedBase64) {
+                alert('Pilih gambar terlebih dahulu!');
+                return;
+            }
 
-    function showStatus(text) {
-      statusBox.classList.remove('hidden');
-      statusText.innerText = text;
-    }
+            // Update UI State (Loading)
+            setLoading(true);
 
-    function hideStatus() {
-      statusBox.classList.add('hidden');
-    }
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'bypass-tunnel-reminder': 'true' // CRITICAL: Bypass LocalTunnel warning page
+                    },
+                    body: JSON.stringify({ image_base64: selectedBase64 })
+                });
 
-    function showResult(beforeUrl, afterUrl) {
-      hideStatus();
-      beforeImg.src = beforeUrl;
-      afterImg.src = afterUrl;
-      resultContainer.classList.remove('hidden');
-    }
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
 
-    let isDragging = false;
-    const container = document.querySelector('.slider-container');
+                const data = await response.json();
 
-    sliderHandle.addEventListener('mousedown', () => isDragging = true);
-    window.addEventListener('mouseup', () => isDragging = false);
-    window.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const rect = container.getBoundingClientRect();
-      let x = e.clientX - rect.left;
-      if (x < 0) x = 0;
-      if (x > rect.width) x = rect.width;
-      const percent = (x / rect.width) * 100;
-      imgOverlay.style.width = `${percent}%`;
-      sliderHandle.style.left = `${percent}%`;
-    });
+                if (data.status === 'success' && data.image_base64) {
+                    // Display Upscaled Image
+                    upscaledPreview.src = data.image_base64;
+                    downloadBtn.href = data.image_base64;
 
-    sliderHandle.addEventListener('touchstart', () => isDragging = true);
-    window.addEventListener('touchend', () => isDragging = false);
-    window.addEventListener('touchmove', (e) => {
-      if (!isDragging) return;
-      const touch = e.touches[0];
-      const rect = container.getBoundingClientRect();
-      let x = touch.clientX - rect.left;
-      if (x < 0) x = 0;
-      if (x > rect.width) x = rect.width;
-      const percent = (x / rect.width) * 100;
-      imgOverlay.style.width = `${percent}%`;
-      sliderHandle.style.left = `${percent}%`;
-    });
-  </script>
+                    // Read Upscaled Resolution
+                    const img = new Image();
+                    img.onload = () => {
+                        upscaledResolution.textContent = `${img.width} x${img.height} px`;
+                    };
+                    img.src = data.image_base64;
+
+                } else {
+                    alert('Gagal memproses gambar dari backend.');
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert(`Error saat menghubungi API: ${err.message}`);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                upscaleBtn.disabled = true;
+                btnText.textContent = 'Sedang Memproses AI...';
+                btnSpinner.classList.remove('hidden');
+            } else {
+                upscaleBtn.disabled = false;
+                btnText.textContent = 'Mulai Upscale (4x)';
+                btnSpinner.classList.add('hidden');
+            }
+        }
+    </script>
 </body>
-  </html>
-  
+</html>
