@@ -6,6 +6,21 @@
     <title>AI Image Upscaler - Real-ESRGAN</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes scan {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+        .animate-scan {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #6366f1, transparent);
+            box-shadow: 0 0 15px #6366f1;
+            animation: scan 2s infinite ease-in-out;
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
@@ -31,8 +46,8 @@
                 <input 
                     type="url" 
                     id="apiUrl" 
-                    placeholder="Masukkan URL LocalTunnel (contoh: https://shaky-views-tell.loca.lt/upscale)"
-                    value="https://shaky-views-tell.loca.lt/upscale"
+                    placeholder="Masukkan URL LocalTunnel (contoh: https://curly-results-check.loca.lt/upscale)"
+                    value="https://curly-results-check.loca.lt/upscale"
                     class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition"
                 >
             </div>
@@ -61,8 +76,20 @@
                 class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
             >
                 <span id="btnText">Mulai Upscale (4x)</span>
-                <div id="btnSpinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             </button>
+        </section>
+
+        <!-- Progress Overlay Status (Wink Style) -->
+        <section id="progressSection" class="hidden bg-slate-800/80 border border-indigo-500/30 rounded-2xl p-6 mb-8 shadow-2xl backdrop-blur">
+            <div class="flex flex-col items-center text-center">
+                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden mb-4 border border-slate-700">
+                    <div id="progressBar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+                <div class="flex justify-between w-full text-xs text-slate-400 mb-2">
+                    <span id="statusStage">Mempersiapkan data...</span>
+                    <span id="timeElapsed">0 Detik</span>
+                </div>
+            </div>
         </section>
 
         <!-- Preview Results Panel -->
@@ -76,8 +103,9 @@
                         <span class="font-semibold text-slate-200">Gambar Asli</span>
                         <span id="origResolution">-</span>
                     </div>
-                    <div class="w-full h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+                    <div class="w-full h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
                         <img id="origPreview" class="max-h-full max-w-full object-contain" alt="Original Preview">
+                        <div id="scannerLine" class="hidden animate-scan"></div>
                     </div>
                 </div>
 
@@ -94,7 +122,7 @@
                     <!-- Download Link -->
                     <a 
                         id="downloadBtn" 
-                        download="upscaled-image.png" 
+                        download="upscaled-image.jpg" 
                         class="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white text-center text-sm font-medium py-2.5 rounded-xl transition block shadow-lg shadow-emerald-600/20"
                     >
                         Unduh Gambar HD
@@ -111,8 +139,13 @@
         const dropZone = document.getElementById('dropZone');
         const upscaleBtn = document.getElementById('upscaleBtn');
         const btnText = document.getElementById('btnText');
-        const btnSpinner = document.getElementById('btnSpinner');
         
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const statusStage = document.getElementById('statusStage');
+        const timeElapsed = document.getElementById('timeElapsed');
+        const scannerLine = document.getElementById('scannerLine');
+
         const resultSection = document.getElementById('resultSection');
         const origPreview = document.getElementById('origPreview');
         const upscaledPreview = document.getElementById('upscaledPreview');
@@ -121,38 +154,25 @@
         const downloadBtn = document.getElementById('downloadBtn');
 
         let selectedBase64 = null;
+        let timerInterval = null;
+        let seconds = 0;
 
-        // 1. Handle File Upload Selection
+        // File Selection
         dropZone.addEventListener('click', () => imageInput.click());
-
         imageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) handleFile(file);
         });
 
-        // Drag and Drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-indigo-500');
-        });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-indigo-500');
-            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-        });
-
-        // Convert File to Base64 & Display Preview
         function handleFile(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 selectedBase64 = e.target.result;
                 origPreview.src = selectedBase64;
                 
-                // Read Resolution
                 const img = new Image();
                 img.onload = () => {
-                    origResolution.textContent = `${img.width} x${img.height} px`;
+                    origResolution.textContent = `${img.width} x ${img.height} px`;
                 };
                 img.src = selectedBase64;
 
@@ -164,73 +184,83 @@
             reader.readAsDataURL(file);
         }
 
-        // 2. Kirim Request ke API Backend
+        // Process Request
         upscaleBtn.addEventListener('click', async () => {
             const apiUrl = document.getElementById('apiUrl').value.trim();
 
-            if (!apiUrl) {
-                alert('Harap masukkan URL API Endpoint!');
-                return;
-            }
+            if (!apiUrl || !selectedBase64) return;
 
-            if (!selectedBase64) {
-                alert('Pilih gambar terlebih dahulu!');
-                return;
-            }
-
-            // Update UI State (Loading)
-            setLoading(true);
+            startProgress();
 
             try {
-                const response = await fetch(apiUrl, {
+                // Step 1: Sending Payload
+                updateStatus(25, "Mengirim data ke GPU Colab...");
+
+                const fetchPromise = fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'bypass-tunnel-reminder': 'true' // CRITICAL: Bypass LocalTunnel warning page
+                        'bypass-tunnel-reminder': 'true'
                     },
                     body: JSON.stringify({ image_base64: selectedBase64 })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status}`);
-                }
+                // Step 2: Processing Simulation
+                setTimeout(() => updateStatus(50, "AI sedang meningkatkan resolusi (Enhancing)..."), 1500);
+                setTimeout(() => updateStatus(75, "Hampir selesai, menyusun kembali gambarnya..."), 3500);
+
+                const response = await fetchPromise;
+
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
                 const data = await response.json();
 
                 if (data.status === 'success' && data.image_base64) {
-                    // Display Upscaled Image
+                    updateStatus(100, "Selesai!");
                     upscaledPreview.src = data.image_base64;
                     downloadBtn.href = data.image_base64;
 
-                    // Read Upscaled Resolution
                     const img = new Image();
                     img.onload = () => {
-                        upscaledResolution.textContent = `${img.width} x${img.height} px`;
+                        upscaledResolution.textContent = `${img.width} x ${img.height} px`;
                     };
                     img.src = data.image_base64;
-
                 } else {
                     alert('Gagal memproses gambar dari backend.');
                 }
 
             } catch (err) {
-                console.error(err);
-                alert(`Error saat menghubungi API: ${err.message}`);
+                alert(`Error: ${err.message}`);
             } finally {
-                setLoading(false);
+                stopProgress();
             }
         });
 
-        function setLoading(isLoading) {
-            if (isLoading) {
-                upscaleBtn.disabled = true;
-                btnText.textContent = 'Sedang Memproses AI...';
-                btnSpinner.classList.remove('hidden');
-            } else {
-                upscaleBtn.disabled = false;
-                btnText.textContent = 'Mulai Upscale (4x)';
-                btnSpinner.classList.add('hidden');
-            }
+        function startProgress() {
+            upscaleBtn.disabled = true;
+            btnText.textContent = 'Proses AI Sedang Berjalan...';
+            progressSection.classList.remove('hidden');
+            scannerLine.classList.remove('hidden');
+            
+            seconds = 0;
+            timeElapsed.textContent = "0 Detik";
+            timerInterval = setInterval(() => {
+                seconds++;
+                timeElapsed.textContent = `${seconds} Detik`;
+            }, 1000);
+        }
+
+        function updateStatus(percent, text) {
+            progressBar.style.width = `${percent}%`;
+            statusStage.textContent = text;
+        }
+
+        function stopProgress() {
+            clearInterval(timerInterval);
+            upscaleBtn.disabled = false;
+            btnText.textContent = 'Mulai Upscale (4x)';
+            scannerLine.classList.add('hidden');
+            setTimeout(() => progressSection.classList.add('hidden'), 1000);
         }
     </script>
 </body>
