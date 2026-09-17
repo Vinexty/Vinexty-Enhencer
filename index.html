@@ -3,264 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Upscaler - Real-ESRGAN</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Vinexty Enhancer - AI Image Upscaler</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @keyframes scan {
-            0% { top: 0%; }
-            50% { top: 100%; }
-            100% { top: 0%; }
+        .loader {
+            border-top-color: #3B82F6;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
         }
-        .animate-scan {
-            position: absolute;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #6366f1, transparent);
-            box-shadow: 0 0 15px #6366f1;
-            animation: scan 2s infinite ease-in-out;
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-gray-900 text-white min-h-screen font-sans flex flex-col items-center p-4">
 
-    <!-- Header -->
-    <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur py-4 px-6 mb-8">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-                Real-ESRGAN AI Upscaler
-            </h1>
-            <span class="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700">
-                GPU Backend Connected
-            </span>
+    <div class="max-w-2xl w-full bg-gray-800 rounded-xl shadow-lg p-6 my-8 border border-gray-700">
+        <h1 class="text-3xl font-bold text-center text-blue-400 mb-2">Vinexty Enhancer</h1>
+        <p class="text-gray-400 text-center text-sm mb-6">Upscale Gambar Komik & Anime Hingga 4x Menggunakan GPU Accelerator</p>
+
+        <!-- Form Konfigurasi Backend -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-300 mb-2">1. Konfigurasi Backend API Endpoint</label>
+            <input type="text" id="apiEndpoint" 
+                placeholder="https://xxxx.trycloudflare.com/upscale" 
+                class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-200 focus:outline-none focus:border-blue-500">
+            <p class="text-xs text-gray-500 mt-1">*Masukkan URL Cloudflare yang didapat dari Google Colab.</p>
         </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="max-w-6xl mx-auto px-4 flex-1 w-full pb-12">
-        
-        <!-- Configuration Panel -->
-        <section class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 shadow-xl">
-            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">1. Konfigurasi Backend</h2>
-            <div class="flex flex-col sm:flex-row gap-4">
-                <input 
-                    type="url" 
-                    id="apiUrl" 
-                    placeholder="Masukkan URL LocalTunnel (contoh: https://curly-results-check.loca.lt/upscale)"
-                    value="https://curly-results-check.loca.lt/upscale"
-                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition"
-                >
-            </div>
-            <p class="text-xs text-slate-500 mt-2">
-                * Pastikan URL di atas sesuai dengan output `🚀 PUBLIC API ENDPOINT TERBARU` dari Google Colab.
-            </p>
-        </section>
-
-        <!-- Upload & Process Panel -->
-        <section class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 shadow-xl">
-            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">2. Unggah Gambar</h2>
-            
-            <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-8 transition cursor-pointer bg-slate-900/30" id="dropZone">
-                <svg class="w-12 h-12 text-slate-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <p class="text-sm text-slate-300 font-medium mb-1">Klik atau seret gambar ke sini</p>
-                <p class="text-xs text-slate-500">Format yang didukung: PNG, JPG, JPEG, WEBP</p>
-                <input type="file" id="imageInput" accept="image/*" class="hidden">
-            </div>
-
-            <!-- Action Button -->
-            <button 
-                id="upscaleBtn" 
-                disabled
-                class="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
-            >
-                <span id="btnText">Mulai Upscale (4x)</span>
-            </button>
-        </section>
-
-        <!-- Progress Overlay Status (Wink Style) -->
-        <section id="progressSection" class="hidden bg-slate-800/80 border border-indigo-500/30 rounded-2xl p-6 mb-8 shadow-2xl backdrop-blur">
-            <div class="flex flex-col items-center text-center">
-                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden mb-4 border border-slate-700">
-                    <div id="progressBar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
-                </div>
-                <div class="flex justify-between w-full text-xs text-slate-400 mb-2">
-                    <span id="statusStage">Mempersiapkan data...</span>
-                    <span id="timeElapsed">0 Detik</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Preview Results Panel -->
-        <section id="resultSection" class="hidden space-y-6">
-            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">3. Hasil Perbandingan</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Original Image -->
-                <div class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 flex flex-col items-center">
-                    <div class="flex justify-between w-full mb-3 text-xs text-slate-400">
-                        <span class="font-semibold text-slate-200">Gambar Asli</span>
-                        <span id="origResolution">-</span>
+        <!-- Form Upload Gambar -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-300 mb-2">2. Pilih Gambar Komik / Anime</label>
+            <div class="flex items-center justify-center w-full">
+                <label for="imageInput" class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-900 hover:bg-gray-800 border-blue-500">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 0115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="mb-2 text-sm text-gray-400"><span class="font-semibold">Klik untuk upload</span> atau seret file ke sini</p>
+                        <p class="text-xs text-gray-500">Format yang didukung: PNG, JPG, JPEG, WEBP</p>
                     </div>
-                    <div class="w-full h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
-                        <img id="origPreview" class="max-h-full max-w-full object-contain" alt="Original Preview">
-                        <div id="scannerLine" class="hidden animate-scan"></div>
-                    </div>
-                </div>
-
-                <!-- Upscaled Image -->
-                <div class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 flex flex-col items-center">
-                    <div class="flex justify-between w-full mb-3 text-xs text-slate-400">
-                        <span class="font-semibold text-indigo-400">Hasil Upscale (4x)</span>
-                        <span id="upscaledResolution" class="text-indigo-400 font-medium">-</span>
-                    </div>
-                    <div class="w-full h-80 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-800 relative">
-                        <img id="upscaledPreview" class="max-h-full max-w-full object-contain" alt="Upscaled Preview">
-                    </div>
-                    
-                    <!-- Download Link -->
-                    <a 
-                        id="downloadBtn" 
-                        download="upscaled-image.jpg" 
-                        class="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white text-center text-sm font-medium py-2.5 rounded-xl transition block shadow-lg shadow-emerald-600/20"
-                    >
-                        Unduh Gambar HD
-                    </a>
-                </div>
+                    <input id="imageInput" type="file" accept="image/*" class="hidden" />
+                </label>
             </div>
-        </section>
+        </div>
 
-    </main>
+        <!-- Tombol Aksi -->
+        <button id="processBtn" onclick="startEnhance()" 
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center">
+            Mulai Upscale (4x)
+        </button>
 
-    <!-- JavaScript Logic -->
+        <!-- Indicator Loading -->
+        <div id="loading" class="hidden my-6 text-center">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-600 h-10 w-10 mx-auto mb-3"></div>
+            <p class="text-blue-400 font-medium animate-pulse">Proses AI Sedang Berjalan di GPU Tesla T4...</p>
+        </div>
+
+        <!-- Section Tampilan Hasil -->
+        <div id="resultContainer" class="hidden mt-8 border-t border-gray-700 pt-6">
+            <h3 class="text-lg font-semibold text-gray-200 mb-4 text-center">Hasil Upscale</h3>
+            <div class="overflow-hidden rounded-lg border border-gray-700 mb-4 bg-gray-900 flex justify-center">
+                <img id="resultImage" src="" alt="Hasil Upscale" class="max-w-full h-auto rounded-lg">
+            </div>
+            <a id="downloadBtn" href="" download="upscaled-image.jpg" 
+                class="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                Unduh Gambar HD
+            </a>
+        </div>
+    </div>
+
     <script>
-        const imageInput = document.getElementById('imageInput');
-        const dropZone = document.getElementById('dropZone');
-        const upscaleBtn = document.getElementById('upscaleBtn');
-        const btnText = document.getElementById('btnText');
-        
-        const progressSection = document.getElementById('progressSection');
-        const progressBar = document.getElementById('progressBar');
-        const statusStage = document.getElementById('statusStage');
-        const timeElapsed = document.getElementById('timeElapsed');
-        const scannerLine = document.getElementById('scannerLine');
+        // // @audit-gas
+        async function startEnhance() {
+            const apiEndpointInput = document.getElementById('apiEndpoint').value.trim();
+            const imageInput = document.getElementById('imageInput').files[0];
+            const processBtn = document.getElementById('processBtn');
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultImage = document.getElementById('resultImage');
+            const downloadBtn = document.getElementById('downloadBtn');
 
-        const resultSection = document.getElementById('resultSection');
-        const origPreview = document.getElementById('origPreview');
-        const upscaledPreview = document.getElementById('upscaledPreview');
-        const origResolution = document.getElementById('origResolution');
-        const upscaledResolution = document.getElementById('upscaledResolution');
-        const downloadBtn = document.getElementById('downloadBtn');
+            if (!apiEndpointInput) {
+                alert('Harap masukkan URL Endpoint Backend terlebih dahulu!');
+                return;
+            }
 
-        let selectedBase64 = null;
-        let timerInterval = null;
-        let seconds = 0;
+            if (!imageInput) {
+                alert('Harap pilih gambar yang ingin di-upscale!');
+                return;
+            }
 
-        // File Selection
-        dropZone.addEventListener('click', () => imageInput.click());
-        imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
-        });
+            // Normalisasi URL jika pengguna tidak memasukkan /upscale di akhir
+            let targetUrl = apiEndpointInput;
+            if (!targetUrl.endsWith('/upscale')) {
+                if (targetUrl.endsWith('/')) {
+                    targetUrl += 'upscale';
+                } else {
+                    targetUrl += '/upscale';
+                }
+            }
 
-        function handleFile(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                selectedBase64 = e.target.result;
-                origPreview.src = selectedBase64;
-                
-                const img = new Image();
-                img.onload = () => {
-                    origResolution.textContent = `${img.width} x ${img.height} px`;
-                };
-                img.src = selectedBase64;
-
-                upscaleBtn.disabled = false;
-                resultSection.classList.remove('hidden');
-                upscaledPreview.src = '';
-                upscaledResolution.textContent = 'Menunggu proses...';
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // Process Request
-        upscaleBtn.addEventListener('click', async () => {
-            const apiUrl = document.getElementById('apiUrl').value.trim();
-
-            if (!apiUrl || !selectedBase64) return;
-
-            startProgress();
+            // Tampilkan state loading
+            processBtn.disabled = true;
+            processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            loading.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
 
             try {
-                // Step 1: Sending Payload
-                updateStatus(25, "Mengirim data ke GPU Colab...");
+                // Konversi gambar ke format Base64
+                const base64Image = await convertFileToBase64(imageInput);
 
-                const fetchPromise = fetch(apiUrl, {
+                // Kirim request ke Cloudflare Endpoint dengan Bypass Header
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // Timeout 2 menit
+
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'bypass-tunnel-reminder': 'true'
+                        'ngrok-skip-browser-warning': 'true',
+                        'bypass-tunnel-reminder': 'true',
+                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ image_base64: selectedBase64 })
+                    body: JSON.stringify({
+                        image_base64: base64Image
+                    }),
+                    signal: controller.signal
                 });
 
-                // Step 2: Processing Simulation
-                setTimeout(() => updateStatus(50, "AI sedang meningkatkan resolusi (Enhancing)..."), 1500);
-                setTimeout(() => updateStatus(75, "Hampir selesai, menyusun kembali gambarnya..."), 3500);
+                clearTimeout(timeoutId);
 
-                const response = await fetchPromise;
-
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP Error ${response.status}: ${errorText || response.statusText}`);
+                }
 
                 const data = await response.json();
 
                 if (data.status === 'success' && data.image_base64) {
-                    updateStatus(100, "Selesai!");
-                    upscaledPreview.src = data.image_base64;
+                    resultImage.src = data.image_base64;
                     downloadBtn.href = data.image_base64;
-
-                    const img = new Image();
-                    img.onload = () => {
-                        upscaledResolution.textContent = `${img.width} x ${img.height} px`;
-                    };
-                    img.src = data.image_base64;
+                    resultContainer.classList.remove('hidden');
                 } else {
-                    alert('Gagal memproses gambar dari backend.');
+                    throw new Error('Respon backend tidak memiliki data gambar yang valid.');
                 }
 
-            } catch (err) {
-                alert(`Error: ${err.message}`);
+            } catch (error) {
+                console.error("Detail Error:", error);
+                if (error.name === 'AbortError') {
+                    alert('Error: Request waktu habis (Timeout). Backend memakan waktu terlalu lama.');
+                } else {
+                    alert('Error: ' + error.message + '\n\nPastikan Backend Colab masih berjalan dan URL yang dimasukkan benar.');
+                }
             } finally {
-                stopProgress();
+                processBtn.disabled = false;
+                processBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                loading.classList.add('hidden');
             }
-        });
-
-        function startProgress() {
-            upscaleBtn.disabled = true;
-            btnText.textContent = 'Proses AI Sedang Berjalan...';
-            progressSection.classList.remove('hidden');
-            scannerLine.classList.remove('hidden');
-            
-            seconds = 0;
-            timeElapsed.textContent = "0 Detik";
-            timerInterval = setInterval(() => {
-                seconds++;
-                timeElapsed.textContent = `${seconds} Detik`;
-            }, 1000);
         }
 
-        function updateStatus(percent, text) {
-            progressBar.style.width = `${percent}%`;
-            statusStage.textContent = text;
-        }
-
-        function stopProgress() {
-            clearInterval(timerInterval);
-            upscaleBtn.disabled = false;
-            btnText.textContent = 'Mulai Upscale (4x)';
-            scannerLine.classList.add('hidden');
-            setTimeout(() => progressSection.classList.add('hidden'), 1000);
+        function convertFileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
         }
     </script>
 </body>
